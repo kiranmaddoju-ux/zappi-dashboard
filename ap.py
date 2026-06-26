@@ -9,8 +9,12 @@ st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
 st.markdown("---")
 
 # =========================================================================
-# 1. CLOUD FILE CONFIGURATION (Direct Corporate Sheet Export)
+# 1. CLOUD FILE CONFIGURATION (Bypassing Corporate Workspace Walls)
 # =========================================================================
+import io
+import requests
+
+# File ID extracted from your screenshot link
 FILE_ID = "1VKas4go8yq32otZ7acyUlEdZnpOAbovy" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
@@ -20,6 +24,11 @@ def load_excel_from_cloud(url):
         session = requests.Session()
         response = session.get(url, stream=True)
         
+        # Check if Google returns a 404 (File Not Found) because it was deleted
+        if response.status_code == 404:
+            st.warning("⚠️ The source file 'Zapi_rawdata.xlsx' has been deleted or moved from Google Drive. Displaying empty dashboard.")
+            return pd.DataFrame()
+            
         token = None
         for key, value in response.cookies.items():
             if key.startswith('download_warning'):
@@ -31,14 +40,21 @@ def load_excel_from_cloud(url):
             response = session.get(url, stream=True)
             
         response.raise_for_status()
+        
+        # Guard rail: If Google returns a web/login/error page instead of a spreadsheet binary
+        if b"html" in response.content[:100].lower():
+            st.error("❌ The file on Google Drive has been deleted or its sharing permissions have been revoked.")
+            return pd.DataFrame()
+            
         return pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
     except Exception as e:
-        st.error(f"❌ Failed to reach Google Drive file stream. Details: {e}")
+        st.warning("⚠️ Source data file not found on Google Drive. It may have been deleted.")
         return pd.DataFrame()
 
 raw_df = load_excel_from_cloud(GOOGLE_DRIVE_URL)
 
 if raw_df.empty:
+    st.info("💡 Please upload the raw data file back to the Google Drive folder to resume tracking.")
     st.stop()
 
 # Clean column spaces
