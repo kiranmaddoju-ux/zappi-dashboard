@@ -11,7 +11,7 @@ st.markdown("---")
 # =========================================================================
 # 1. CLOUD FILE CONFIGURATION (Direct Corporate Sheet Export)
 # =========================================================================
-FILE_ID = "1w-22N9Vn7v7YstFwH_w4VvP3l_8ZkXv5" 
+FILE_ID = "1VKas4go8yq32otZ7acyUlEdZnpOAbovy" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
 @st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
