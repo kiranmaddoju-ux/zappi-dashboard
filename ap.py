@@ -9,7 +9,7 @@ st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
 st.markdown("---")
 
 # =========================================================================
-# 1. CLOUD FILE CONFIGURATION (Direct Corporate Sheet Export)
+# 1. CLOUD FILE CONFIGURATION (Bypassing Corporate Workspace Walls)
 # =========================================================================
 import io
 import requests
@@ -17,22 +17,34 @@ import requests
 # File ID extracted from your screenshot link
 FILE_ID = "1w-22N9Vn7v7YstFwH_w4VvP3l_8ZkXv5" 
 
-# ⭐ This official export URL structure safely bypasses the Google 403 firewall blocker
-GOOGLE_DRIVE_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=xlsx"
+# ⭐ This endpoint specifically forces Google to bypass the web login wrapper 
+# and stream the raw file bits directly to our Streamlit container
+GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
 @st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
 def load_excel_from_cloud(url):
     try:
-        # Pass a standard browser User-Agent header so Google handles the request normally
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-        response = requests.get(url, headers=headers, allow_redirects=True)
+        # Use an open session context to manage corporate stream parameters automatically
+        session = requests.Session()
+        response = session.get(url, stream=True)
+        
+        # If Google shows a large file virus warning page, grab the confirmation token automatically
+        token = None
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                token = value
+                break
+                
+        if token:
+            url = url + f"&confirm={token}"
+            response = session.get(url, stream=True)
+            
         response.raise_for_status()
         
-        # Read the sheet directly into Python's memory buffer
-        return pd.read_excel(io.BytesIO(response.content))
+        # Read the stream directly into memory using the explicit engine parameter
+        return pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
     except Exception as e:
         st.error(f"❌ Failed to reach Google Drive file stream. Details: {e}")
-        st.info("💡 Double check that your Google Drive file sharing permissions are still set to 'Anyone with link can view'.")
         return pd.DataFrame()
 
 raw_df = load_excel_from_cloud(GOOGLE_DRIVE_URL)
