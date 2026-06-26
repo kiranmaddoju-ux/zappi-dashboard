@@ -15,7 +15,7 @@ import io
 import requests
 
 # File ID extracted from your screenshot link
-FILE_ID = "1VKas4go8yq32otZ7acyUlEdZnpOAbovy" 
+FILE_ID = "10tE_AOVJH-WzrzRgozxVdKy8SObpYoru" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
 @st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
