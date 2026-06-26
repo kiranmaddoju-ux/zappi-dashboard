@@ -1,33 +1,193 @@
-Python
-# =========================================================================
-# 1. FILE CONFIGURATION (Google Drive Cloud Setup)
-# =========================================================================
+import streamlit as st
+import pandas as pd
 import io
 import requests
 
-# The Folder ID provided: 1fFcmQFcKUYGtr5_IpMQ7V6cal0k15vzd
-# To make this seamless, you need the File ID of 'Zapi_rawdata.xlsx' inside that folder.
-# Ensure the file is set to "Anyone with the link can view" or shared within your organization.
+st.set_page_config(layout="wide")
 
-# 💡 Replace 'YOUR_FILE_ID_HERE' with the actual ID of the Zapi_rawdata.xlsx file
-FILE_ID = "1VKas4go8yq32otZ7acyUlEdZnpOAbovy" 
-GOOGLE_DRIVE_URL = f"https://docs.google.com/uc?export=download&id={FILE_ID}"
+st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
+st.markdown("---")
 
-@st.cache_data(ttl=600)  # Caches data for 10 minutes, then auto-checks Google Drive for updates
-def load_excel_data_from_drive(url):
+# =========================================================================
+# 1. CLOUD FILE CONFIGURATION (Direct from Google Drive API)
+# =========================================================================
+# File ID extracted from your screenshot link
+FILE_ID = "1w-22N9Vn7v7YstFwH_w4VvP3l_8ZkXv5" 
+GOOGLE_DRIVE_URL = f"https://docs.google.com/uc?export=download&id={FILE_ID}&confirm=t"
+
+@st.cache_data(ttl=600)  # Automatically checks Google Drive for data updates every 10 minutes
+def load_excel_from_cloud(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, allow_redirects=True)
         response.raise_for_status()
-        # Read the file directly into memory from the cloud response
         return pd.read_excel(io.BytesIO(response.content))
     except Exception as e:
-        st.error(f"❌ Failed to fetch data from Google Drive: {e}")
+        st.error(f"❌ Could not fetch data from Google Drive link. Please make sure the file share settings are set to 'Anyone with link can view'. Error details: {e}")
         return pd.DataFrame()
 
-raw_df = load_excel_data_from_drive(GOOGLE_DRIVE_URL)
+raw_df = load_excel_from_cloud(GOOGLE_DRIVE_URL)
 
 if raw_df.empty:
     st.stop()
 
-# Clean column spaces just in case
+# Clean column spaces
 raw_df.columns = raw_df.columns.str.strip()
+
+# =========================================================================
+# 2. MULTI-SELECT FRONT-END FILTERS
+# =========================================================================
+# Display the exact number of projects selected, matching your Excel look
+available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
+st.markdown(f"**Selected Projects Tracked: {len(available_projects_preview)}**")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    available_markets = list(raw_df["Survey Country"].unique()) if "Survey Country" in raw_df.columns else ["India"]
+    selected_markets = st.multiselect("Market (Country)", available_markets, default=[available_markets[0]])
+
+filtered_by_market = raw_df[raw_df["Survey Country"].isin(selected_markets)]
+
+with col2:
+    available_languages = list(filtered_by_market["Survey Language"].unique()) if "Survey Language" in filtered_by_market.columns else ["English"]
+    selected_langs = st.multiselect("Language", available_languages, default=[available_languages[0]])
+
+filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
+
+with col3:
+    available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
+    default_projects = [available_projects[0]] if available_projects else []
+    selected_projects = st.multiselect("Project Name", available_projects, default=default_projects)
+
+project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
+
+# =========================================================================
+# 3. ADVANCED COUNTING LOGIC 
+# =========================================================================
+st.markdown("### Quota Performance Summary")
+
+def get_counts(row_type, row_val):
+    if project_df.empty:
+        return 0, 0
+    temp_df = project_df.copy()
+    
+    if row_type == "Device":
+        temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
+        
+    elif row_type == "State":
+        if "State" in temp_df.columns:
+            temp_df = temp_df[temp_df["State"].astype(str).str.strip().str.upper() == row_val.upper()]
+        else:
+            return 0, 0
+        
+    elif row_type == "Age-Gender":
+        gender, age_range = row_val.split(":")  
+        low_age, high_age = map(int, age_range.split("-"))
+        temp_df = temp_df[temp_df["Gender"].astype(str).str.strip().str.upper() == gender.upper()]
+        temp_df["Age_Clean"] = pd.to_numeric(temp_df["Age"], errors='coerce')
+        temp_df = temp_df[(temp_df["Age_Clean"] >= low_age) & (temp_df["Age_Clean"] <= high_age)]
+        
+    elif row_type == "ISEC":
+        low_isec, high_isec = map(int, row_val.split("-"))
+        isec_col = "ISEC - Segmentation Parent Edition"
+        if isec_col in temp_df.columns:
+            temp_df[isec_col] = temp_df[isec_col].astype(str).str.strip()
+            temp_df["ISEC_Clean"] = temp_df[isec_col].str.extract(r'(\d+)').apply(pd.to_numeric, errors='coerce')
+            numeric_filter = temp_df[(temp_df["ISEC_Clean"] >= low_isec) & (temp_df["ISEC_Clean"] <= high_isec)]
+            if not numeric_filter.empty:
+                temp_df = numeric_filter
+            else:
+                allowed_strings = [str(num) for num in range(low_isec, high_isec + 1)]
+                temp_df = temp_df[temp_df[isec_col].str.contains('|'.join(allowed_strings), na=False)]
+        else:
+            return 0, 0
+
+    if "Supplier Group" in temp_df.columns:
+        online_count = len(temp_df[temp_df["Supplier Group"].astype(str).str.strip() == "Group MP"])
+        offline_count = len(temp_df[(temp_df["Supplier Group"].astype(str).str.strip() == "None") | (temp_df["Supplier Group"].isna())])
+    else:
+        online_count, offline_count = 0, 0
+    return online_count, offline_count
+
+# =========================================================================
+# 4. FIXED LAYOUT STRUCTURE MATRIX
+# =========================================================================
+layout_definition = [
+    ["Desktop", "Device", "Desktop", 400, 160, 240],
+    ["Mobile", "Device", "Mobile", 400, 160, 240],
+    ["Device Total", "Total_Marker", "", 800, 320, 240],
+    
+    ["Delhi- Delhi/New Delhi", "State", "DELHI", 100, 100, 100],
+    ["Uttar Pradesh - Lucknow", "State", "UTTAR PRADESH", 100, 100, 100],
+    ["Maharastra - Mumbai", "State", "MAHARASHTRA", 100, 100, 100],
+    ["Rajasthan - Jaipur", "State", "RAJASTHAN", 100, 100, 100],
+    ["State Total", "Total_Marker", "", 400, 400, 400],
+    
+    ["Male - 16-24", "Age-Gender", "Male:16-24", 50, 20, 30],
+    ["Female - 16-24", "Age-Gender", "Female:16-24", 50, 20, 30],
+    ["Male 25-44", "Age-Gender", "Male:25-44", 90, 36, 54],
+    ["Female 25-44", "Age-Gender", "Female:25-44", 90, 36, 54],
+    ["Male 45-75", "Age-Gender", "Male:45-75", 60, 24, 36],
+    ["Female 45-75", "Age-Gender", "Female:45-75", 60, 24, 36],
+    ["Gender-Age Total", "Total_Marker", "", 400, 160, 240],
+    
+    ["ISEC 1-3", "ISEC", "1-3", 80, 80, 0],
+    ["ISEC 4-5", "ISEC", "4-5", 80, 80, 0],
+    ["ISEC 6-7", "ISEC", "6-7", 120, 0, 120],
+    ["ISEC 8-12", "ISEC", "8-12", 120, 0, 120],
+    ["ISEC Total", "Total_Marker", "", 400, 160, 240]
+]
+
+final_rows = []
+row_labels = []
+
+for row in layout_definition:
+    label, r_type, r_val, t_tgt, on_tgt, off_tgt = row
+    row_labels.append(label)
+    if r_type == "Total_Marker":
+        final_rows.append([t_tgt, "100%", 0, on_tgt, 0, 0, off_tgt, 0, 0])
+    else:
+        on_col, off_col = get_counts(r_type, r_val)
+        tot_col = on_col + off_col
+        on_pend = on_tgt - on_col
+        off_pend = off_tgt - off_col
+        pct_text = f"{(t_tgt / 400)*100:,.0f}%" if t_tgt <= 400 else "100%"
+        final_rows.append([t_tgt, pct_text, tot_col, on_tgt, on_col, on_pend, off_tgt, off_col, off_pend])
+
+columns = pd.MultiIndex.from_tuples([
+    ('TOTAL', 'Target'), ('TOTAL', 'Target %'), ('TOTAL', 'Collected'),
+    ('GROUP MP (ONLINE)', 'Target'), ('GROUP MP (ONLINE)', 'Collected'), ('GROUP MP (ONLINE)', 'Pending'),
+    ('MARKETEXCEL (OFFLINE)', 'Target'), ('MARKETEXCEL (OFFLINE)', 'Collected'), ('MARKETEXCEL (OFFLINE)', 'Pending')
+])
+
+report_df = pd.DataFrame(final_rows, index=row_labels, columns=columns)
+
+# =========================================================================
+# 5. RE-CALCULATE SECTION TOTALS
+# =========================================================================
+device_rows = [row[0] for row in layout_definition if row[1] == "Device"]
+state_rows = [row[0] for row in layout_definition if row[1] == "State"]
+age_rows = [row[0] for row in layout_definition if row[1] == "Age-Gender"]
+isec_rows = [row[0] for row in layout_definition if row[1] == "ISEC"]
+
+dynamic_sections = [
+    ("Device Total", device_rows),
+    ("State Total", state_rows),
+    ("Gender-Age Total", age_rows),
+    ("ISEC Total", isec_rows)
+]
+
+for section_tot, tracking_rows in dynamic_sections:
+    if tracking_rows:
+        report_df.loc[section_tot, ('TOTAL', 'Collected')] = report_df.loc[tracking_rows, ('TOTAL', 'Collected')].sum()
+        report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')] = report_df.loc[tracking_rows, ('GROUP MP (ONLINE)', 'Collected')].sum()
+        report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')] = report_df.loc[tracking_rows, ('MARKETEXCEL (OFFLINE)', 'Collected')].sum()
+        report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Pending')] = report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Target')] - report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')]
+        report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Pending')] = report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Target')] - report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')]
+
+# Rendering styled display
+def highlight_cols(val):
+    return 'background-color: #FFFF99; color: black;'
+
+styled_report = report_df.style.map(highlight_cols, subset=[('GROUP MP (ONLINE)', 'Collected'), ('MARKETEXCEL (OFFLINE)', 'Collected')])
+st.dataframe(styled_report, use_container_width=True, height=750)
