@@ -9,20 +9,30 @@ st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
 st.markdown("---")
 
 # =========================================================================
-# 1. CLOUD FILE CONFIGURATION (Direct from Google Drive API)
+# 1. CLOUD FILE CONFIGURATION (Direct Corporate Sheet Export)
 # =========================================================================
+import io
+import requests
+
 # File ID extracted from your screenshot link
 FILE_ID = "1w-22N9Vn7v7YstFwH_w4VvP3l_8ZkXv5" 
-GOOGLE_DRIVE_URL = f"https://docs.google.com/uc?export=download&id={FILE_ID}&confirm=t"
 
-@st.cache_data(ttl=600)  # Automatically checks Google Drive for data updates every 10 minutes
+# ⭐ This official export URL structure safely bypasses the Google 403 firewall blocker
+GOOGLE_DRIVE_URL = f"https://docs.google.com/spreadsheets/d/{FILE_ID}/export?format=xlsx"
+
+@st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
 def load_excel_from_cloud(url):
     try:
-        response = requests.get(url, allow_redirects=True)
+        # Pass a standard browser User-Agent header so Google handles the request normally
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(url, headers=headers, allow_redirects=True)
         response.raise_for_status()
+        
+        # Read the sheet directly into Python's memory buffer
         return pd.read_excel(io.BytesIO(response.content))
     except Exception as e:
-        st.error(f"❌ Could not fetch data from Google Drive link. Please make sure the file share settings are set to 'Anyone with link can view'. Error details: {e}")
+        st.error(f"❌ Failed to reach Google Drive file stream. Details: {e}")
+        st.info("💡 Double check that your Google Drive file sharing permissions are still set to 'Anyone with link can view'.")
         return pd.DataFrame()
 
 raw_df = load_excel_from_cloud(GOOGLE_DRIVE_URL)
