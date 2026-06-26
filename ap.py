@@ -9,26 +9,17 @@ st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
 st.markdown("---")
 
 # =========================================================================
-# 1. CLOUD FILE CONFIGURATION (Bypassing Corporate Workspace Walls)
+# 1. CLOUD FILE CONFIGURATION (Direct Corporate Sheet Export)
 # =========================================================================
-import io
-import requests
-
-# File ID extracted from your screenshot link
-FILE_ID = "1VKas4go8yq32otZ7acyUlEdZnpOAbovy" 
-
-# ⭐ This endpoint specifically forces Google to bypass the web login wrapper 
-# and stream the raw file bits directly to our Streamlit container
+FILE_ID = "1w-22N9Vn7v7YstFwH_w4VvP3l_8ZkXv5" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
 @st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
 def load_excel_from_cloud(url):
     try:
-        # Use an open session context to manage corporate stream parameters automatically
         session = requests.Session()
         response = session.get(url, stream=True)
         
-        # If Google shows a large file virus warning page, grab the confirmation token automatically
         token = None
         for key, value in response.cookies.items():
             if key.startswith('download_warning'):
@@ -40,8 +31,6 @@ def load_excel_from_cloud(url):
             response = session.get(url, stream=True)
             
         response.raise_for_status()
-        
-        # Read the stream directly into memory using the explicit engine parameter
         return pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
     except Exception as e:
         st.error(f"❌ Failed to reach Google Drive file stream. Details: {e}")
@@ -56,12 +45,11 @@ if raw_df.empty:
 raw_df.columns = raw_df.columns.str.strip()
 
 # =========================================================================
-# 2. SIDEBAR FRONT-END FILTERS (Zero Scrolling Layout)
+# 2. SIDEBAR FRONT-END FILTERS (Zero Scrolling & Built-In Search)
 # =========================================================================
-# Everything moves over to a clean left-side panel!
 with st.sidebar:
     st.header("🔍 Filter Parameters")
-    st.caption("Tip: Click inside any box and type to search instantly.")
+    st.caption("💡 Click inside any box and type characters to search instantly.")
     
     # 1. Market Selection Box
     available_markets = list(raw_df["Survey Country"].unique()) if "Survey Country" in raw_df.columns else ["India"]
@@ -76,14 +64,13 @@ with st.sidebar:
     filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
 
     # 3. Searchable Project Selection Box
-    # Users can click and type characters here to search through 20+ projects instantly!
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
     default_projects = [available_projects[0]] if available_projects else []
     selected_projects = st.multiselect("Project Name", available_projects, default=default_projects)
 
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
 
-# Main page display banner right beneath the main title
+# Main page project counter display banner right beneath the main title
 available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
 st.markdown(f"📊 **Currently Analyzing: {len(selected_projects)} of {len(available_projects_preview)} Total Projects**")
 
