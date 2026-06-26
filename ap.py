@@ -56,32 +56,36 @@ if raw_df.empty:
 raw_df.columns = raw_df.columns.str.strip()
 
 # =========================================================================
-# 2. MULTI-SELECT FRONT-END FILTERS
+# 2. SIDEBAR FRONT-END FILTERS (Zero Scrolling Layout)
 # =========================================================================
-# Display the exact number of projects selected, matching your Excel look
-available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
-st.markdown(f"**Selected Projects Tracked: {len(available_projects_preview)}**")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
+# Everything moves over to a clean left-side panel!
+with st.sidebar:
+    st.header("🔍 Filter Parameters")
+    st.caption("Tip: Click inside any box and type to search instantly.")
+    
+    # 1. Market Selection Box
     available_markets = list(raw_df["Survey Country"].unique()) if "Survey Country" in raw_df.columns else ["India"]
     selected_markets = st.multiselect("Market (Country)", available_markets, default=[available_markets[0]])
 
-filtered_by_market = raw_df[raw_df["Survey Country"].isin(selected_markets)]
+    filtered_by_market = raw_df[raw_df["Survey Country"].isin(selected_markets)]
 
-with col2:
+    # 2. Language Selection Box
     available_languages = list(filtered_by_market["Survey Language"].unique()) if "Survey Language" in filtered_by_market.columns else ["English"]
     selected_langs = st.multiselect("Language", available_languages, default=[available_languages[0]])
 
-filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
+    filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
 
-with col3:
+    # 3. Searchable Project Selection Box
+    # Users can click and type characters here to search through 20+ projects instantly!
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
     default_projects = [available_projects[0]] if available_projects else []
     selected_projects = st.multiselect("Project Name", available_projects, default=default_projects)
 
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
+
+# Main page display banner right beneath the main title
+available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
+st.markdown(f"📊 **Currently Analyzing: {len(selected_projects)} of {len(available_projects_preview)} Total Projects**")
 
 # =========================================================================
 # 3. ADVANCED COUNTING LOGIC 
