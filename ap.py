@@ -144,6 +144,7 @@ def get_counts(row_type, row_val):
 layout_definition = [
     ["Desktop", "Device", "Desktop", 400, 160, 240],
     ["Mobile", "Device", "Mobile", 400, 160, 240],
+    ["Tablet", "Device", "Tablet", 400, 160, 240],
     ["Device Total", "Total_Marker", "", 800, 320, 240],
     
     ["Delhi- Delhi/New Delhi", "State", "DELHI", 100, 100, 100],
