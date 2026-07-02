@@ -54,6 +54,12 @@ if raw_df.empty:
 # Clean column spaces safely
 raw_df.columns = raw_df.columns.str.strip()
 
+# Clean column spaces safely
+raw_df.columns = raw_df.columns.str.strip()
+
+# ⭐ FIX: Drop all ghost/empty rows from the bottom of the Excel sheet instantly
+raw_df = raw_df.dropna(subset=["Project Name"])
+
 # =========================================================================
 # 2. SIDEBAR FRONT-END FILTERS (Zero Scrolling & Built-In Search)
 # =========================================================================
