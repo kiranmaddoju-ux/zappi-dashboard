@@ -93,11 +93,13 @@ def get_counts(row_type, row_val):
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
         
-    elif row_type == "City_Code":  #  Perfectly realigned spacing
+    elif row_type == "City_Code":
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            temp_df = temp_df[temp_df[actual_col].astype(str).str.strip() == str(row_val).strip()]
+            # Convert both sides cleanly to integers to eliminate decimal variations (.0)
+            temp_df["City_Clean"] = pd.to_numeric(temp_df[actual_col], errors='coerce').fillna(-1).astype(int)
+            temp_df = temp_df[temp_df["City_Clean"] == int(row_val)]
         else:
             return 0, 0
         
