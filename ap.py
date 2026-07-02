@@ -9,19 +9,19 @@ st.title("📊 ZAPPI SERVICES MARKET PERFORMANCE REVIEW - DASHBOARD")
 st.markdown("---")
 
 # =========================================================================
-# 1. CLOUD FILE CONFIGURATION (Bypassing Corporate Workspace Walls)
+# 1. CLOUD FILE CONFIGURATION (Direct Cloud Sync)
 # =========================================================================
 FILE_ID = "1jGrpT9e0utjvIUHS-CzZ441ml8YUpx1A" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
-@st.cache_data(ttl=600)  # Automatically refreshes data every 10 minutes from Google Drive
+@st.cache_data(ttl=600)  
 def load_excel_from_cloud(url):
     try:
         session = requests.Session()
         response = session.get(url, stream=True)
         
         if response.status_code == 404:
-            st.warning("⚠️ The source file 'Zapi_rawdata.xlsx' has been deleted or moved from Google Drive. Displaying empty dashboard.")
+            st.warning("⚠️ The source file 'Zapi_rawdata.xlsx' has been deleted or moved from Google Drive.")
             return pd.DataFrame()
             
         token = None
@@ -35,14 +35,9 @@ def load_excel_from_cloud(url):
             response = session.get(url, stream=True)
             
         response.raise_for_status()
-        
-        if b"html" in response.content[:100].lower():
-            st.error("❌ The file on Google Drive has been deleted or its sharing permissions have been revoked.")
-            return pd.DataFrame()
-            
         return pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
     except Exception as e:
-        st.warning("⚠️ Source data file not found on Google Drive. It may have been deleted.")
+        st.warning("⚠️ Source data file not found on Google Drive.")
         return pd.DataFrame()
 
 raw_df = load_excel_from_cloud(GOOGLE_DRIVE_URL)
@@ -54,63 +49,58 @@ if raw_df.empty:
 # Clean column spaces safely
 raw_df.columns = raw_df.columns.str.strip()
 
-# Clean column spaces safely
-raw_df.columns = raw_df.columns.str.strip()
-
-# ⭐ FIX: Drop all ghost/empty rows from the bottom of the Excel sheet instantly
+# Drop rows that don't have a valid project name to eliminate ghost excel padding rows
 raw_df = raw_df.dropna(subset=["Project Name"])
 
 # =========================================================================
-# 2. SIDEBAR FRONT-END FILTERS (Zero Scrolling & Built-In Search)
+# 2. SIDEBAR FRONT-END FILTERS 
 # =========================================================================
 with st.sidebar:
     st.header("🔍 Filter Parameters")
     st.caption("💡 Click inside any box and type characters to search instantly.")
     
     available_markets = list(raw_df["Survey Country"].unique()) if "Survey Country" in raw_df.columns else ["India"]
-    selected_markets = st.multiselect("Market (Country)", available_markets, default=[available_markets[0]])
+    selected_markets = st.multiselect("Market (Country)", available_markets, default=available_markets)
 
     filtered_by_market = raw_df[raw_df["Survey Country"].isin(selected_markets)]
 
     available_languages = list(filtered_by_market["Survey Language"].unique()) if "Survey Language" in filtered_by_market.columns else ["English"]
-    selected_langs = st.multiselect("Language", available_languages, default=[available_languages[0]])
+    selected_langs = st.multiselect("Language", available_languages, default=available_languages)
 
     filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
 
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
-    default_projects = [available_projects[0]] if available_projects else []
-    selected_projects = st.multiselect("Project Name", available_projects, default=default_projects)
+    selected_projects = st.multiselect("Project Name", available_projects, default=available_projects)
 
+# project_df is used for sidebar status header, but the table matrix uses raw_df for direct counting!
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
 
 available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
-st.markdown(f"📊 **Currently Analyzing: {len(selected_projects)} of {len(available_projects_preview)} Total Projects**")
+st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
 
 # =========================================================================
-# 3. ADVANCED COUNTING LOGIC 
+# 3. GLOBAL MATRIX COUNTING LOGIC 
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
 def get_counts(row_type, row_val):
-    if project_df.empty:
+    # ⭐ Realignment: Point directly to raw_df so sidebar drops do not zero out your matrix rows!
+    if raw_df.empty:
         return 0, 0
-    temp_df = project_df.copy()
+    temp_df = raw_df.copy()
     
     if row_type == "Device":
-        temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
+        temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().str.lower()]
         
     elif row_type == "City_Code":
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            # Clean up the data column by removing trailing spaces and making it lowercase
-            temp_df["City_Cleaned_Str"] = temp_df[actual_col].astype(str).str.strip().str.lower()
-            # Clean up the target lookup value the exact same way
-            target_val = str(row_val).strip().str.lower() if hasattr(row_val, 'lower') else str(row_val).strip().lower()
-            
-            temp_df = temp_df[temp_df["City_Cleaned_Str"] == target_val]
+            # Convert column cells and target matching text directly to clean, stripped lowercase values
+            temp_df["City_Match"] = temp_df[actual_col].astype(str).str.strip().str.lower()
+            target_str = str(row_val).strip().lower()
+            temp_df = temp_df[temp_df["City_Match"] == target_str]
         else:
-            return 0, 0
             return 0, 0
         
     elif row_type == "Age-Gender":
@@ -151,11 +141,11 @@ layout_definition = [
     ["Tablet", "Device", "Tablet", 400, 160, 240],
     ["Device Total", "Total_Marker", "", 800, 320, 240],
     
-    ["Delhi - 112", "City_Code", "112", 100, 100, 100],
-    ["Jaipur - 120", "City_Code", "120", 100, 100, 100],
-    ["Mumbai - 111", "City_Code", "111", 100, 100, 100],
-    ["Hyderabad - 114", "City_Code", "114", 100, 100, 100],
-    ["Lucknow - 121", "City_Code", "121", 100, 100, 100],
+    ["Delhi - 112", "City_Code", "Delhi", 100, 100, 100],
+    ["Jaipur - 120", "City_Code", "Jaipur", 100, 100, 100],
+    ["Mumbai - 111", "City_Code", "Mumbai", 100, 100, 100],
+    ["Hyderabad - 114", "City_Code", "Hyderabad", 100, 100, 100],
+    ["Lucknow - 121", "City_Code", "Lucknow", 100, 100, 100],
     ["City Total", "Total_Marker", "", 500, 500, 500],
     
     ["Male - 16-24", "Age-Gender", "Male:16-24", 50, 20, 30],
@@ -198,7 +188,7 @@ columns = pd.MultiIndex.from_tuples([
 report_df = pd.DataFrame(final_rows, index=row_labels, columns=columns)
 
 # =========================================================================
-# 5. RE-CALCULATE SECTION TOTALS (Synchronized with City layout keys)
+# 5. RE-CALCULATE SECTION TOTALS
 # =========================================================================
 device_rows = [row[0] for row in layout_definition if row[1] == "Device"]
 city_rows = [row[0] for row in layout_definition if row[1] == "City_Code"] 
@@ -210,7 +200,7 @@ dynamic_sections = [
     ("City Total", city_rows), 
     ("Gender-Age Total", age_rows),
     ("ISEC Total", isec_rows)
-]
+)
 
 for section_tot, tracking_rows in dynamic_sections:
     if tracking_rows:
