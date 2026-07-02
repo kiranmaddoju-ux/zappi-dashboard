@@ -161,5 +161,61 @@ layout_definition = [
     
     ["ISEC 1-3", "ISEC", "1-3", 80, 80, 0],
     ["ISEC 4-5", "ISEC", "4-5", 80, 80, 0],
-
+    ["ISEC 6-7", "ISEC", "6-7", 120, 0, 120],
+    ["ISEC 8-12", "ISEC", "8-12", 120, 0, 120],
+    ["ISEC Total", "Total_Marker", "", 400, 160, 240]
 ]
+
+final_rows = []
+row_labels = []
+
+for row in layout_definition:
+    label, r_type, r_val, t_tgt, on_tgt, off_tgt = row
+    row_labels.append(label)
+    if r_type == "Total_Marker":
+        final_rows.append([t_tgt, "100%", 0, on_tgt, 0, 0, off_tgt, 0, 0])
+    else:
+        on_col, off_col = get_counts(r_type, r_val)
+        tot_col = on_col + off_col
+        on_pend = on_tgt - on_col
+        off_pend = off_tgt - off_col
+        pct_text = f"{(t_tgt / 400)*100:,.0f}%" if t_tgt <= 400 else "100%"
+        final_rows.append([t_tgt, pct_text, tot_col, on_tgt, on_col, on_pend, off_tgt, off_col, off_pend])
+
+columns = pd.MultiIndex.from_tuples([
+    ('TOTAL', 'Target'), ('TOTAL', 'Target %'), ('TOTAL', 'Collected'),
+    ('GROUP MP (ONLINE)', 'Target'), ('GROUP MP (ONLINE)', 'Collected'), ('GROUP MP (ONLINE)', 'Pending'),
+    ('MARKETEXCEL (OFFLINE)', 'Target'), ('MARKETEXCEL (OFFLINE)', 'Collected'), ('MARKETEXCEL (OFFLINE)', 'Pending')
+])
+
+report_df = pd.DataFrame(final_rows, index=row_labels, columns=columns)
+
+# =========================================================================
+# 5. RE-CALCULATE SECTION TOTALS
+# =========================================================================
+device_rows = [row[0] for row in layout_definition if row[1] == "Device"]
+city_rows = [row[0] for row in layout_definition if row[1] == "City_Code"] 
+age_rows = [row[0] for row in layout_definition if row[1] == "Age-Gender"]
+isec_rows = [row[0] for row in layout_definition if row[1] == "ISEC"]
+
+dynamic_sections = [
+    ("Device Total", device_rows),
+    ("City Total", city_rows), 
+    ("Gender-Age Total", age_rows),
+    ("ISEC Total", isec_rows)
+] 
+
+for section_tot, tracking_rows in dynamic_sections:
+    if tracking_rows:
+        report_df.loc[section_tot, ('TOTAL', 'Collected')] = report_df.loc[tracking_rows, ('TOTAL', 'Collected')].sum()
+        report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')] = report_df.loc[tracking_rows, ('GROUP MP (ONLINE)', 'Collected')].sum()
+        report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')] = report_df.loc[tracking_rows, ('MARKETEXCEL (OFFLINE)', 'Collected')].sum()
+        report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Pending')] = report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Target')] - report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')]
+        report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Pending')] = report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Target')] - report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')]
+
+# Rendering styled display
+def highlight_cols(val):
+    return 'background-color: #FFFF99; color: black;'
+
+styled_report = report_df.style.map(highlight_cols, subset=[('GROUP MP (ONLINE)', 'Collected'), ('MARKETEXCEL (OFFLINE)', 'Collected')])
+st.dataframe(styled_report, use_container_width=True, height=750)
