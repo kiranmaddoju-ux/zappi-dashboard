@@ -72,22 +72,21 @@ with st.sidebar:
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
     selected_projects = st.multiselect("Project Name", available_projects, default=available_projects)
 
-# project_df captures the precise project rows selected in your filters
+# project_df captures the precise filtered data for display information banners
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
 
 available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
-st.markdown(f"📊 **Currently Analyzing Volume for: {len(selected_projects)} Selected Projects**")
+st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
 
 # =========================================================================
-# 3. ADVANCED MATRIX COUNTING LOGIC 
+# 3. GLOBAL MATRIX COUNTING LOGIC (Bulletproof Version)
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
 def get_counts(row_type, row_val):
-    # ⭐ FIX: Point to project_df so calculations respect selected filters
-    if project_df.empty:
+    if raw_df.empty:
         return 0, 0
-    temp_df = project_df.copy()
+    temp_df = raw_df.copy()
     
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().lower()]
@@ -96,12 +95,10 @@ def get_counts(row_type, row_val):
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            
             if row_val == "Other_Unassigned":
-                # Count records where the city column is empty or missing completely
+                # Safely catches entirely empty cells or empty strings
                 temp_df = temp_df[temp_df[actual_col].isna() | (temp_df[actual_col].astype(str).str.strip() == "")]
             else:
-                # Fill blanks with placeholders so the string methods don't crash or skip rows
                 temp_df["City_Match"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
                 target_str = str(row_val).strip().lower()
                 temp_df = temp_df[temp_df["City_Match"] == target_str]
@@ -130,11 +127,14 @@ def get_counts(row_type, row_val):
         else:
             return 0, 0
 
+    # Leak-proof group split verification
     if "Supplier Group" in temp_df.columns:
         online_count = len(temp_df[temp_df["Supplier Group"].astype(str).str.strip() == "Group MP"])
-        offline_count = len(temp_df[(temp_df["Supplier Group"].astype(str).str.strip() == "None") | (temp_df["Supplier Group"].isna())])
+        offline_count = len(temp_df) - online_count
     else:
-        online_count, offline_count = 0, 0
+        online_count = len(temp_df)
+        offline_count = 0
+        
     return online_count, offline_count
 
 # =========================================================================
@@ -151,6 +151,7 @@ layout_definition = [
     ["Mumbai - 111", "City_Code", "Mumbai", 100, 100, 100],
     ["Hyderabad - 114", "City_Code", "Hyderabad", 100, 100, 100],
     ["Lucknow - 121", "City_Code", "Lucknow", 100, 100, 100],
+    ["Unassigned / Blanks", "City_Code", "Other_Unassigned", 0, 0, 0],
     ["City Total", "Total_Marker", "", 500, 500, 500],
     
     ["Male - 16-24", "Age-Gender", "Male:16-24", 50, 20, 30],
