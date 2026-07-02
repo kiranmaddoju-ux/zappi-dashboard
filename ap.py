@@ -94,13 +94,8 @@ def get_counts(row_type, row_val):
         if "City_Code" in temp_df.columns:
             # Convert to string, strip outer spaces, and clean off any '.0' decimal formatting from Excel
             temp_df["City_Match_Clean"] = temp_df["City_Code"].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            
-            if row_val == "Other_Unassigned":
-                known_codes = ["112", "120", "111", "114", "121"]
-                temp_df = temp_df[~temp_df["City_Match_Clean"].isin(known_codes)]
-            else:
-                target_str = str(row_val).strip()
-                temp_df = temp_df[temp_df["City_Match_Clean"] == target_str]
+            target_str = str(row_val).strip()
+            temp_df = temp_df[temp_df["City_Match_Clean"] == target_str]
         else:
             return 0, 0
         
@@ -136,7 +131,7 @@ def get_counts(row_type, row_val):
     return online_count, offline_count
 
 # =========================================================================
-# 4. FIXED LAYOUT STRUCTURE MATRIX (Using Numeric Code Lookup Values)
+# 4. FIXED LAYOUT STRUCTURE MATRIX (Cleaned: Unassigned Row Removed)
 # =========================================================================
 layout_definition = [
     ["Desktop", "Device", "Desktop", 400, 160, 240],
@@ -144,13 +139,11 @@ layout_definition = [
     ["Tablet", "Device", "Tablet", 400, 160, 240],
     ["Device Total", "Total_Marker", "", 800, 320, 240],
     
-    # ⭐ FIXED: Lookups switched to numeric strings to match your data file exactly
     ["Delhi - 112", "City_Code", "112", 100, 100, 100],
     ["Jaipur - 120", "City_Code", "120", 100, 100, 100],
     ["Mumbai - 111", "City_Code", "111", 100, 100, 100],
     ["Hyderabad - 114", "City_Code", "114", 100, 100, 100],
     ["Lucknow - 121", "City_Code", "121", 100, 100, 100],
-    ["Unassigned / Blanks", "City_Code", "Other_Unassigned", 0, 0, 0],
     ["City Total", "Total_Marker", "", 500, 500, 500],
     
     ["Male - 16-24", "Age-Gender", "Male:16-24", 50, 20, 30],
