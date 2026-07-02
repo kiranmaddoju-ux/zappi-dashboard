@@ -93,11 +93,10 @@ def get_counts(row_type, row_val):
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
         
- elif row_type == "City_Code":
+    elif row_type == "City_Code":  #  Perfectly realigned spacing
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            # .astype(str) ensures numbers like 112 become "112" so it matches perfectly
             temp_df = temp_df[temp_df[actual_col].astype(str).str.strip() == str(row_val).strip()]
         else:
             return 0, 0
@@ -190,13 +189,13 @@ report_df = pd.DataFrame(final_rows, index=row_labels, columns=columns)
 # 5. RE-CALCULATE SECTION TOTALS (Synchronized with City layout keys)
 # =========================================================================
 device_rows = [row[0] for row in layout_definition if row[1] == "Device"]
-city_rows = [row[0] for row in layout_definition if row[1] == "City_Code"] # Fixed tag reference
+city_rows = [row[0] for row in layout_definition if row[1] == "City_Code"] 
 age_rows = [row[0] for row in layout_definition if row[1] == "Age-Gender"]
 isec_rows = [row[0] for row in layout_definition if row[1] == "ISEC"]
 
 dynamic_sections = [
     ("Device Total", device_rows),
-    ("City Total", city_rows), # Fixed section name reference
+    ("City Total", city_rows), 
     ("Gender-Age Total", age_rows),
     ("ISEC Total", isec_rows)
 ]
