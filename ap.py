@@ -95,9 +95,12 @@ def get_counts(row_type, row_val):
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
+            
             if row_val == "Other_Unassigned":
-                # Safely catches entirely empty cells or empty strings
-                temp_df = temp_df[temp_df[actual_col].isna() | (temp_df[actual_col].astype(str).str.strip() == "")]
+                # ⭐ TRUE MATH CATCHER: Keep only rows that are NOT in our explicit city list
+                known_cities = ["delhi", "jaipur", "mumbai", "hyderabad", "lucknow"]
+                temp_df["City_Match_Lower"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
+                temp_df = temp_df[~temp_df["City_Match_Lower"].isin(known_cities)]
             else:
                 temp_df["City_Match"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
                 target_str = str(row_val).strip().lower()
