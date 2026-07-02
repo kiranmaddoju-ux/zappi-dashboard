@@ -97,9 +97,9 @@ def get_counts(row_type, row_val):
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            # Convert both sides cleanly to integers to eliminate decimal variations (.0)
-            temp_df["City_Clean"] = pd.to_numeric(temp_df[actual_col], errors='coerce').fillna(-1).astype(int)
-            temp_df = temp_df[temp_df["City_Clean"] == int(row_val)]
+            # Convert to string, drop decimals if any (.0), and check if it contains the target pre-code string
+            temp_df[actual_col] = temp_df[actual_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            temp_df = temp_df[temp_df[actual_col] == str(row_val).strip()]
         else:
             return 0, 0
         
