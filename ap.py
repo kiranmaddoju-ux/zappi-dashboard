@@ -11,10 +11,6 @@ st.markdown("---")
 # =========================================================================
 # 1. CLOUD FILE CONFIGURATION (Bypassing Corporate Workspace Walls)
 # =========================================================================
-import io
-import requests
-
-# File ID extracted from your screenshot link
 FILE_ID = "1jGrpT9e0utjvIUHS-CzZ441ml8YUpx1A" 
 GOOGLE_DRIVE_URL = f"https://drive.google.com/uc?id={FILE_ID}&export=download"
 
@@ -24,7 +20,6 @@ def load_excel_from_cloud(url):
         session = requests.Session()
         response = session.get(url, stream=True)
         
-        # Check if Google returns a 404 (File Not Found) because it was deleted
         if response.status_code == 404:
             st.warning("⚠️ The source file 'Zapi_rawdata.xlsx' has been deleted or moved from Google Drive. Displaying empty dashboard.")
             return pd.DataFrame()
@@ -41,7 +36,6 @@ def load_excel_from_cloud(url):
             
         response.raise_for_status()
         
-        # Guard rail: If Google returns a web/login/error page instead of a spreadsheet binary
         if b"html" in response.content[:100].lower():
             st.error("❌ The file on Google Drive has been deleted or its sharing permissions have been revoked.")
             return pd.DataFrame()
@@ -57,7 +51,7 @@ if raw_df.empty:
     st.info("💡 Please upload the raw data file back to the Google Drive folder to resume tracking.")
     st.stop()
 
-# Clean column spaces
+# Clean column spaces safely
 raw_df.columns = raw_df.columns.str.strip()
 
 # =========================================================================
@@ -67,26 +61,22 @@ with st.sidebar:
     st.header("🔍 Filter Parameters")
     st.caption("💡 Click inside any box and type characters to search instantly.")
     
-    # 1. Market Selection Box
     available_markets = list(raw_df["Survey Country"].unique()) if "Survey Country" in raw_df.columns else ["India"]
     selected_markets = st.multiselect("Market (Country)", available_markets, default=[available_markets[0]])
 
     filtered_by_market = raw_df[raw_df["Survey Country"].isin(selected_markets)]
 
-    # 2. Language Selection Box
     available_languages = list(filtered_by_market["Survey Language"].unique()) if "Survey Language" in filtered_by_market.columns else ["English"]
     selected_langs = st.multiselect("Language", available_languages, default=[available_languages[0]])
 
     filtered_by_lang = filtered_by_market[filtered_by_market["Survey Language"].isin(selected_langs)]
 
-    # 3. Searchable Project Selection Box
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
     default_projects = [available_projects[0]] if available_projects else []
     selected_projects = st.multiselect("Project Name", available_projects, default=default_projects)
 
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
 
-# Main page project counter display banner right beneath the main title
 available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
 st.markdown(f"📊 **Currently Analyzing: {len(selected_projects)} of {len(available_projects_preview)} Total Projects**")
 
@@ -104,8 +94,11 @@ def get_counts(row_type, row_val):
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
         
     elif row_type == "City_Code":
-        if "4121 - City Question  Code" in temp_df.columns:
-            temp_df = temp_df[temp_df["4121 - City Question  Code"].astype(str).str.strip().str.upper() == row_val.upper()]
+        # ⭐ BULLETPROOF FIX: Automatically identifies the column even with hidden spacing characters
+        city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
+        if city_col:
+            actual_col = city_col[0]
+            temp_df = temp_df[temp_df[actual_col].astype(str).str.strip().str.upper() == row_val.upper()]
         else:
             return 0, 0
         
@@ -194,16 +187,16 @@ columns = pd.MultiIndex.from_tuples([
 report_df = pd.DataFrame(final_rows, index=row_labels, columns=columns)
 
 # =========================================================================
-# 5. RE-CALCULATE SECTION TOTALS
+# 5. RE-CALCULATE SECTION TOTALS (Synchronized with City layout keys)
 # =========================================================================
 device_rows = [row[0] for row in layout_definition if row[1] == "Device"]
-state_rows = [row[0] for row in layout_definition if row[1] == "State"]
+city_rows = [row[0] for row in layout_definition if row[1] == "City_Code"] # Fixed tag reference
 age_rows = [row[0] for row in layout_definition if row[1] == "Age-Gender"]
 isec_rows = [row[0] for row in layout_definition if row[1] == "ISEC"]
 
 dynamic_sections = [
     ("Device Total", device_rows),
-    ("State Total", state_rows),
+    ("City Total", city_rows), # Fixed section name reference
     ("Gender-Age Total", age_rows),
     ("ISEC Total", isec_rows)
 ]
