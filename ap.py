@@ -84,20 +84,19 @@ st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_pro
 st.markdown("### Quota Performance Summary")
 
 def get_counts(row_type, row_val):
-    # ⭐ Realignment: Point directly to raw_df so sidebar drops do not zero out your matrix rows!
     if raw_df.empty:
         return 0, 0
     temp_df = raw_df.copy()
     
     if row_type == "Device":
-        temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().str.lower()]
+        # Fixed string lowering assignment bug
+        temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().lower()]
         
     elif row_type == "City_Code":
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
             temp_df["City_Match"] = temp_df[actual_col].astype(str).str.strip().str.lower()
-            # ⭐ FIXED: Cleaned up target_str mapping syntax safely
             target_str = str(row_val).strip().lower()
             temp_df = temp_df[temp_df["City_Match"] == target_str]
         else:
@@ -200,7 +199,7 @@ dynamic_sections = [
     ("City Total", city_rows), 
     ("Gender-Age Total", age_rows),
     ("ISEC Total", isec_rows)
-] #  Fixed to closing square bracket
+] 
 
 for section_tot, tracking_rows in dynamic_sections:
     if tracking_rows:
