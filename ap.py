@@ -79,7 +79,7 @@ available_projects_preview = list(raw_df["Project Name"].unique()) if "Project N
 st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
 
 # =========================================================================
-# 3. GLOBAL MATRIX COUNTING LOGIC (Bulletproof Version)
+# 3. GLOBAL MATRIX COUNTING LOGIC (Bulletproof Partials Matcher)
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
@@ -96,15 +96,17 @@ def get_counts(row_type, row_val):
         if city_col:
             actual_col = city_col[0]
             
+            # Clean string conversions across the column pool
+            temp_df["City_Match_Lower"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
+            
             if row_val == "Other_Unassigned":
-                # ⭐ TRUE MATH CATCHER: Keep only rows that are NOT in our explicit city list
+                # Find anything that doesn't contain any of our primary tracked targets
                 known_cities = ["delhi", "jaipur", "mumbai", "hyderabad", "lucknow"]
-                temp_df["City_Match_Lower"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
-                temp_df = temp_df[~temp_df["City_Match_Lower"].isin(known_cities)]
+                temp_df = temp_df[~temp_df["City_Match_Lower"].str.contains('|'.join(known_cities), na=False)]
             else:
-                temp_df["City_Match"] = temp_df[actual_col].fillna("unknown").astype(str).str.strip().str.lower()
+                # ⭐ FIXED: Uses a containment match to break through hidden string formatting/spacing issues
                 target_str = str(row_val).strip().lower()
-                temp_df = temp_df[temp_df["City_Match"] == target_str]
+                temp_df = temp_df[temp_df["City_Match_Lower"].str.contains(target_str, na=False)]
         else:
             return 0, 0
         
@@ -216,9 +218,9 @@ for section_tot, tracking_rows in dynamic_sections:
         report_df.loc[section_tot, ('TOTAL', 'Collected')] = report_df.loc[tracking_rows, ('TOTAL', 'Collected')].sum()
         report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')] = report_df.loc[tracking_rows, ('GROUP MP (ONLINE)', 'Collected')].sum()
         report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')] = report_df.loc[tracking_rows, ('MARKETEXCEL (OFFLINE)', 'Collected')].sum()
-        
         report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Pending')] = report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Target')] - report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')]
         report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Pending')] = report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Target')] - report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')]
+
 # Rendering styled display
 def highlight_cols(val):
     return 'background-color: #FFFF99; color: black;'
