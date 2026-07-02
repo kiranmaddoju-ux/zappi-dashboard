@@ -93,12 +93,12 @@ def get_counts(row_type, row_val):
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
         
-    elif row_type == "City_Code":
-        # ⭐ BULLETPROOF FIX: Automatically identifies the column even with hidden spacing characters
+ elif row_type == "City_Code":
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            temp_df = temp_df[temp_df[actual_col].astype(str).str.strip().str.upper() == row_val.upper()]
+            # .astype(str) ensures numbers like 112 become "112" so it matches perfectly
+            temp_df = temp_df[temp_df[actual_col].astype(str).str.strip() == str(row_val).strip()]
         else:
             return 0, 0
         
