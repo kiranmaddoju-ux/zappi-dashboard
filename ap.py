@@ -200,7 +200,7 @@ dynamic_sections = [
     ("City Total", city_rows), 
     ("Gender-Age Total", age_rows),
     ("ISEC Total", isec_rows)
-)
+] #  Fixed to closing square bracket
 
 for section_tot, tracking_rows in dynamic_sections:
     if tracking_rows:
