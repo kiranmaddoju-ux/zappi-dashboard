@@ -78,21 +78,22 @@ available_projects_preview = list(raw_df["Project Name"].unique()) if "Project N
 st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
 
 # =========================================================================
-# 3. GLOBAL MATRIX COUNTING LOGIC (Direct Numeric Pre-Code Matcher)
+# 3. GLOBAL MATRIX COUNTING LOGIC (Dynamic Filter Aligned)
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
 def get_counts(row_type, row_val):
-    if raw_df.empty:
+    # ⭐ FIX: Point back to project_df so changing dropdown filters updates the matrix counts instantly!
+    if project_df.empty:
         return 0, 0
-    temp_df = raw_df.copy()
+    temp_df = project_df.copy()
     
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().lower()]
         
     elif row_type == "City_Code":
         if "City_Code" in temp_df.columns:
-            # Convert to string, strip outer spaces, and clean off any '.0' decimal formatting from Excel
+            # Convert to string, strip spaces, and wipe out any Excel .0 trailing decimals safely
             temp_df["City_Match_Clean"] = temp_df["City_Code"].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             target_str = str(row_val).strip()
             temp_df = temp_df[temp_df["City_Match_Clean"] == target_str]
