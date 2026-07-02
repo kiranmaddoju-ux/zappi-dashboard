@@ -72,24 +72,24 @@ with st.sidebar:
     available_projects = list(filtered_by_lang["Project Name"].unique()) if "Project Name" in filtered_by_lang.columns else []
     selected_projects = st.multiselect("Project Name", available_projects, default=available_projects)
 
-# project_df is used for sidebar status header, but the table matrix uses raw_df for direct counting!
+# project_df captures the precise project rows selected in your filters
 project_df = filtered_by_lang[filtered_by_lang["Project Name"].isin(selected_projects)]
 
 available_projects_preview = list(raw_df["Project Name"].unique()) if "Project Name" in raw_df.columns else []
-st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
+st.markdown(f"📊 **Currently Analyzing Volume for: {len(selected_projects)} Selected Projects**")
 
 # =========================================================================
-# 3. GLOBAL MATRIX COUNTING LOGIC 
+# 3. ADVANCED MATRIX COUNTING LOGIC 
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
 def get_counts(row_type, row_val):
-    if raw_df.empty:
+    # ⭐ FIX: Point to project_df so calculations respect selected filters
+    if project_df.empty:
         return 0, 0
-    temp_df = raw_df.copy()
+    temp_df = project_df.copy()
     
     if row_type == "Device":
-        # Fixed string lowering assignment bug
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip().str.lower() == str(row_val).strip().lower()]
         
     elif row_type == "City_Code":
