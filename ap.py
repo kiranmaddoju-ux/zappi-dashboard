@@ -103,9 +103,9 @@ def get_counts(row_type, row_val):
     if row_type == "Device":
         temp_df = temp_df[temp_df["Device"].astype(str).str.strip() == row_val]
         
-    elif row_type == "State":
-        if "State" in temp_df.columns:
-            temp_df = temp_df[temp_df["State"].astype(str).str.strip().str.upper() == row_val.upper()]
+    elif row_type == "City_Code":
+        if "4121 - City Question  Code" in temp_df.columns:
+            temp_df = temp_df[temp_df["4121 - City Question  Code"].astype(str).str.strip().str.upper() == row_val.upper()]
         else:
             return 0, 0
         
