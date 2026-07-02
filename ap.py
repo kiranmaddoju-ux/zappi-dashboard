@@ -216,9 +216,9 @@ for section_tot, tracking_rows in dynamic_sections:
         report_df.loc[section_tot, ('TOTAL', 'Collected')] = report_df.loc[tracking_rows, ('TOTAL', 'Collected')].sum()
         report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')] = report_df.loc[tracking_rows, ('GROUP MP (ONLINE)', 'Collected')].sum()
         report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')] = report_df.loc[tracking_rows, ('MARKETEXCEL (OFFLINE)', 'Collected')].sum()
+        
         report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Pending')] = report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Target')] - report_df.loc[section_tot, ('GROUP MP (ONLINE)', 'Collected')]
         report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Pending')] = report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Target')] - report_df.loc[section_tot, ('MARKETEXCEL (OFFLINE)', 'Collected')]
-
 # Rendering styled display
 def highlight_cols(val):
     return 'background-color: #FFFF99; color: black;'
