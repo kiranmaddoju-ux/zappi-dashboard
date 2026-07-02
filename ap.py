@@ -78,7 +78,7 @@ available_projects_preview = list(raw_df["Project Name"].unique()) if "Project N
 st.markdown(f"📊 **Currently Analyzing Total Volume across: {len(available_projects_preview)} Registered Projects**")
 
 # =========================================================================
-# 3. GLOBAL MATRIX COUNTING LOGIC (Clean direct column lookup)
+# 3. GLOBAL MATRIX COUNTING LOGIC (Direct Numeric Pre-Code Matcher)
 # =========================================================================
 st.markdown("### Quota Performance Summary")
 
@@ -92,14 +92,15 @@ def get_counts(row_type, row_val):
         
     elif row_type == "City_Code":
         if "City_Code" in temp_df.columns:
-            temp_df["City_Match_Lower"] = temp_df["City_Code"].fillna("unknown").astype(str).str.strip().str.lower()
+            # Convert to string, strip outer spaces, and clean off any '.0' decimal formatting from Excel
+            temp_df["City_Match_Clean"] = temp_df["City_Code"].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
             
             if row_val == "Other_Unassigned":
-                known_cities = ["delhi", "jaipur", "mumbai", "hyderabad", "lucknow"]
-                temp_df = temp_df[~temp_df["City_Match_Lower"].str.contains('|'.join(known_cities), na=False)]
+                known_codes = ["112", "120", "111", "114", "121"]
+                temp_df = temp_df[~temp_df["City_Match_Clean"].isin(known_codes)]
             else:
-                target_str = str(row_val).strip().lower()
-                temp_df = temp_df[temp_df["City_Match_Lower"].str.contains(target_str, na=False)]
+                target_str = str(row_val).strip()
+                temp_df = temp_df[temp_df["City_Match_Clean"] == target_str]
         else:
             return 0, 0
         
@@ -135,7 +136,7 @@ def get_counts(row_type, row_val):
     return online_count, offline_count
 
 # =========================================================================
-# 4. FIXED LAYOUT STRUCTURE MATRIX
+# 4. FIXED LAYOUT STRUCTURE MATRIX (Using Numeric Code Lookup Values)
 # =========================================================================
 layout_definition = [
     ["Desktop", "Device", "Desktop", 400, 160, 240],
@@ -143,11 +144,12 @@ layout_definition = [
     ["Tablet", "Device", "Tablet", 400, 160, 240],
     ["Device Total", "Total_Marker", "", 800, 320, 240],
     
-    ["Delhi - 112", "City_Code", "Delhi", 100, 100, 100],
-    ["Jaipur - 120", "City_Code", "Jaipur", 100, 100, 100],
-    ["Mumbai - 111", "City_Code", "Mumbai", 100, 100, 100],
-    ["Hyderabad - 114", "City_Code", "Hyderabad", 100, 100, 100],
-    ["Lucknow - 121", "City_Code", "Lucknow", 100, 100, 100],
+    # ⭐ FIXED: Lookups switched to numeric strings to match your data file exactly
+    ["Delhi - 112", "City_Code", "112", 100, 100, 100],
+    ["Jaipur - 120", "City_Code", "120", 100, 100, 100],
+    ["Mumbai - 111", "City_Code", "111", 100, 100, 100],
+    ["Hyderabad - 114", "City_Code", "114", 100, 100, 100],
+    ["Lucknow - 121", "City_Code", "121", 100, 100, 100],
     ["Unassigned / Blanks", "City_Code", "Other_Unassigned", 0, 0, 0],
     ["City Total", "Total_Marker", "", 500, 500, 500],
     
