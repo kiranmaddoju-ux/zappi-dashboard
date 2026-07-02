@@ -140,11 +140,11 @@ layout_definition = [
     ["Tablet", "Device", "Tablet", 400, 160, 240],
     ["Device Total", "Total_Marker", "", 800, 320, 240],
     
-    ["Delhi - 112", "City_Code", "Delhi -112", 100, 100, 100],
-    ["Jaipur - 120", "City_Code", "Jaipur -120", 100, 100, 100],
-    ["Mumbai - 111", "City_Code", "Mumbai -111", 100, 100, 100],
-    ["Hyderabad - 114", "City_Code", "Hyderabad -114", 100, 100, 100],
-    ["Lucknow - 121", "City_Code", "Lucknow -121", 100, 100, 100],
+    ["Delhi - 112", "City_Code", "112", 100, 100, 100],
+    ["Jaipur - 120", "City_Code", "120", 100, 100, 100],
+    ["Mumbai - 111", "City_Code", "111", 100, 100, 100],
+    ["Hyderabad - 114", "City_Code", "114", 100, 100, 100],
+    ["Lucknow - 121", "City_Code", "121", 100, 100, 100],
     ["City Total", "Total_Marker", "", 500, 500, 500],
     
     ["Male - 16-24", "Age-Gender", "Male:16-24", 50, 20, 30],
