@@ -103,10 +103,14 @@ def get_counts(row_type, row_val):
         city_col = [c for c in temp_df.columns if "4121" in c or "City Question" in c]
         if city_col:
             actual_col = city_col[0]
-            # Convert to string, drop decimals if any (.0), and check if it contains the target pre-code string
-            temp_df[actual_col] = temp_df[actual_col].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-            temp_df = temp_df[temp_df[actual_col] == str(row_val).strip()]
+            # Clean up the data column by removing trailing spaces and making it lowercase
+            temp_df["City_Cleaned_Str"] = temp_df[actual_col].astype(str).str.strip().str.lower()
+            # Clean up the target lookup value the exact same way
+            target_val = str(row_val).strip().str.lower() if hasattr(row_val, 'lower') else str(row_val).strip().lower()
+            
+            temp_df = temp_df[temp_df["City_Cleaned_Str"] == target_val]
         else:
+            return 0, 0
             return 0, 0
         
     elif row_type == "Age-Gender":
